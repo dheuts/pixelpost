@@ -126,7 +126,8 @@ function check_and_set($directory)
 function is__writable($path)
 {
 	// recursively return a temporary file path
-	if($path{strlen($path)-1} == '/')
+//	if($path{strlen($path)-1} == '/')
+	if ($path(strlen($path)-1) == '/')
 	{
 		return is__writable($path.uniqid(mt_rand()).'.tmp');
 	}
