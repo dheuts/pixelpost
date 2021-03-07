@@ -1,5 +1,5 @@
 <?php
-
+//require('FirePHPCore/fb.php');
 // SVN file version:
 // $Id$
 
@@ -61,7 +61,7 @@ define('ADMIN_DIR', 'admin/');
 
 if(file_exists("includes/pixelpost.php")){ require_once("includes/pixelpost.php"); }
 
-start_mysql('includes/pixelpost.php','front');
+start_mysqli('includes/pixelpost.php','front');
 
 /**
  * Load the $cfgrow configuration variable and set the upload directory
@@ -109,7 +109,7 @@ if(isset($_POST['vcookie']))
 }
 
 // cleanup $_GET['x']
-if(isset($_GET['x'])){ $_GET['x'] = eregi_replace('[^a-z0-9_-]', '', $_GET['x']); }
+if(isset($_GET['x'])){ $_GET['x'] = preg_replace('[^a-z0-9_-]', '', $_GET['x']); }
 
 if(isset($_GET['errors']) && $_SESSION["pixelpost_admin"])
 {
@@ -172,8 +172,8 @@ $cdate    = $datetime; // for future posting, current date+time
  * Query the database and pullout the language array(s).
  *
  */
-$query = mysql_query("SELECT * FROM `".$pixelpost_db_prefix."localization`");
-$row   = mysql_fetch_array($query,MYSQL_ASSOC);
+$query = mysqli_query($con,"SELECT * FROM `".$pixelpost_db_prefix."localization`");
+$row   = mysqli_fetch_array($query,MYSQLI_ASSOC);
 
 /**
  * Unserialize the defualt language array using the UTF8 safe unserialize function, mb_unserialize.
@@ -263,7 +263,7 @@ if(file_exists("language/lang-english.php"))
 if(!empty($language_full))
 {
 	// check if illegal characters are used
-	if (!ereg("^[A-Za-z]+([0-9]+)?$", $language_full)) {
+	if (!preg_match("^[A-Za-z]+([0-9]+)?$", $language_full)) {
 		echo '<b>Error:</b><br />Pixelpost cannot include this file. If you need assistance in resolving this error please visit the <a href="http://www.pixelpost.org/forum/">Pixelpost Forum</a>.';
 		setcookie ('lang', "", time() - 3600, '/', false, 0);
 		exit;
@@ -339,7 +339,7 @@ if($language_full==$cfgrow['langfile'])
 {   // we have our default language from the PP installation, so we use our default templates
     if(isset($_GET['x']) && file_exists("templates/".$cfgrow['template']."/".$_GET['x']."_template.html"))
     {
-    	if(eregi("[.]",$_GET['x'])) { die("Come on! forget about it..."); }
+    	if(preg_match("[.]",$_GET['x'])) { die("Come on! forget about it..."); }
 
     	$tpl = compile("templates/".$cfgrow['template']."/".$_GET['x']."_template.html");
 
@@ -368,7 +368,7 @@ else
 {
 	if(isset($_GET['x']) && file_exists("templates/".$cfgrow['template']."/".$_GET['x']."_".$language_abr."_template.html")) // we use our special designed language templates.
 	{
-		if (eregi("[.]",$_GET['x'])) { die("Come on! forget about it..."); }
+		if (preg_match("[.]",$_GET['x'])) { die("Come on! forget about it..."); }
 
 		$tpl = compile("templates/".$cfgrow['template']."/".$_GET['x']."_".$language_abr."_template.html");
 
@@ -665,9 +665,9 @@ if(!isset($_GET['x']))
 			$ahead_thumbs         =  '';
 			$ahead_thumbs_reverse =  '';
 
-			$thumbs_ahead = mysql_query("SELECT `id`,`headline`,`alt_headline`,`image` FROM `".$pixelpost_db_prefix."pixelpost` WHERE (`datetime` > '$image_datetime') AND (`datetime` <= '$cdate') ORDER BY `datetime` ASC LIMIT 0,$aheadlimit");
+			$thumbs_ahead = mysqli_query($con,"SELECT `id`,`headline`,`alt_headline`,`image` FROM `".$pixelpost_db_prefix."pixelpost` WHERE (`datetime` > '$image_datetime') AND (`datetime` <= '$cdate') ORDER BY `datetime` ASC LIMIT 0,$aheadlimit");
 
-			while(list($id,$headline,$alt_headline,$image) = mysql_fetch_row($thumbs_ahead))
+			while(list($id,$headline,$alt_headline,$image) = mysqli_fetch_row($thumbs_ahead))
 			{
 				$headline = ($language_abr == $default_language_abr) ? pullout($headline) : pullout($alt_headline);
 
@@ -684,9 +684,9 @@ if(!isset($_GET['x']))
 			$behind_thumbs         =  "";
 			$behind_thumbs_reverse =  "";
 
-			$thumbs_behind = mysql_query("SELECT `id`,`headline`,`alt_headline`,`image` FROM `".$pixelpost_db_prefix."pixelpost` WHERE (`datetime` < '$image_datetime') AND (`datetime` <= '$cdate') ORDER BY `datetime` DESC LIMIT 0,$behindlimit");
+			$thumbs_behind = mysqli_query($con,"SELECT `id`,`headline`,`alt_headline`,`image` FROM `".$pixelpost_db_prefix."pixelpost` WHERE (`datetime` < '$image_datetime') AND (`datetime` <= '$cdate') ORDER BY `datetime` DESC LIMIT 0,$behindlimit");
 
-			while(list($id,$headline,$alt_headline,$image) = mysql_fetch_row($thumbs_behind)) {
+			while(list($id,$headline,$alt_headline,$image) = mysqli_fetch_row($thumbs_behind)) {
 				
 				$headline = ($language_abr == $default_language_abr) ? pullout($headline) : pullout($alt_headline);
 
@@ -705,20 +705,20 @@ if(!isset($_GET['x']))
 			$thumbnail_row         =  "$behind_thumbs<a href='$showprefix$image_id'><img src='".ltrim($cfgrow['thumbnailpath'], "./")."thumb_".$image_name."' alt='$image_title' title='$image_title' class='current-thumbnail' width='$local_width' height='$local_height' /></a>$ahead_thumbs";
 			$thumbnail_row_reverse =  "$ahead_thumbs_reverse<a href='$showprefix$image_id'><img src='".ltrim($cfgrow['thumbnailpath'], "./")."thumb_".$image_name."' alt='$image_title' title='$image_title' class='current-thumbnail' width='$local_width' height='$local_height' /></a>$behind_thumbs_reverse";
 
-			$tpl  =  ereg_replace("<IMAGE_THUMBNAIL_ROW>",$thumbnail_row,$tpl);
-			$tpl  =  ereg_replace("<IMAGE_THUMBNAIL_ROW_REV>",$thumbnail_row_reverse,$tpl);
+			$tpl  =  preg_replace("<IMAGE_THUMBNAIL_ROW>",$thumbnail_row,$tpl);
+			$tpl  =  preg_replace("<IMAGE_THUMBNAIL_ROW_REV>",$thumbnail_row_reverse,$tpl);
 
 		}
 	}
 
 	// Modified from Mark Lewin's hack for multiple categories
-	$query = mysql_query("SELECT t1.cat_id,t2.name,t2.alt_name FROM `".$pixelpost_db_prefix."catassoc` AS t1 INNER JOIN `".$pixelpost_db_prefix."categories` t2 ON t1.cat_id = t2.id WHERE t1.image_id = '$image_id' ORDER BY t2.name");
+	$query = mysqli_query($con,"SELECT t1.cat_id,t2.name,t2.alt_name FROM `".$pixelpost_db_prefix."catassoc` AS t1 INNER JOIN `".$pixelpost_db_prefix."categories` t2 ON t1.cat_id = t2.id WHERE t1.image_id = '$image_id' ORDER BY t2.name");
 	$image_category_number = 0;
 
 	$image_category_all ="";
 	$image_category_all_paged = "";
 
-	while(list($cat_id,$name,$alt_name) = mysql_fetch_row($query))
+	while(list($cat_id,$name,$alt_name) = mysqli_fetch_row($query))
 	{
 		$name = ($language_abr == $default_language_abr) ? pullout($name) : pullout($alt_name);
 
@@ -730,53 +730,53 @@ if(!isset($_GET['x']))
 	
 	$image_categoryword = ($image_category_number >1) ? "$lang_category_plural " : "$lang_category_singular ";
 
-	$tpl = ereg_replace("<SITE_TITLE>",$pixelpost_site_title,$tpl);
-	$tpl = ereg_replace("<SUB_TITLE>",$pixelpost_sub_title,$tpl);
-	$tpl = ereg_replace("<SITE_URL>",$cfgrow['siteurl'],$tpl);
-	$tpl = ereg_replace("<IMAGE_CATEGORY>",$image_categoryword." ".$image_category_all,$tpl);
+	$tpl = preg_replace("<SITE_TITLE>",$pixelpost_site_title,$tpl);
+	$tpl = preg_replace("<SUB_TITLE>",$pixelpost_sub_title,$tpl);
+	$tpl = preg_replace("<SITE_URL>",$cfgrow['siteurl'],$tpl);
+	$tpl = preg_replace("<IMAGE_CATEGORY>",$image_categoryword." ".$image_category_all,$tpl);
 
 	// for paged_archive addon
-	$tpl = ereg_replace("<IMAGE_CATEGORY_PAGED>",$image_categoryword." ".$image_category_all_paged,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATE_YEAR_FULL>",$image_date_year_full,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATE_YEAR>",$image_date_year,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATE_MONTH>",$image_date_month,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATE_DAY>",$image_date_day,$tpl);
-	$tpl = ereg_replace("<IMAGE_THUMBNAIL>",$image_thumbnail,$tpl);
+	$tpl = preg_replace("<IMAGE_CATEGORY_PAGED>",$image_categoryword." ".$image_category_all_paged,$tpl);
+	$tpl = preg_replace("<IMAGE_DATE_YEAR_FULL>",$image_date_year_full,$tpl);
+	$tpl = preg_replace("<IMAGE_DATE_YEAR>",$image_date_year,$tpl);
+	$tpl = preg_replace("<IMAGE_DATE_MONTH>",$image_date_month,$tpl);
+	$tpl = preg_replace("<IMAGE_DATE_DAY>",$image_date_day,$tpl);
+	$tpl = preg_replace("<IMAGE_THUMBNAIL>",$image_thumbnail,$tpl);
 
 	// thumbnail no link
-	$tpl = ereg_replace("<IMAGE_THUMBNAIL_NO_LINK>",$image_thumbnail_no_link,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATE>",$image_date,$tpl);
-	$tpl = ereg_replace("<IMAGE_TIME>",$image_time,$tpl);
-	$tpl = ereg_replace("<IMAGE_NAME>",$image_name,$tpl);
-	$tpl = ereg_replace("<IMAGE_TITLE>",$image_title,$tpl);
-	$tpl = ereg_replace("<IMAGE_DATETIME>",$image_datetime_formatted,$tpl);
-	$tpl = ereg_replace("<IMAGE_NOTES>",$image_notes,$tpl);
+	$tpl = preg_replace("<IMAGE_THUMBNAIL_NO_LINK>",$image_thumbnail_no_link,$tpl);
+	$tpl = preg_replace("<IMAGE_DATE>",$image_date,$tpl);
+	$tpl = preg_replace("<IMAGE_TIME>",$image_time,$tpl);
+	$tpl = preg_replace("<IMAGE_NAME>",$image_name,$tpl);
+	$tpl = preg_replace("<IMAGE_TITLE>",$image_title,$tpl);
+	$tpl = preg_replace("<IMAGE_DATETIME>",$image_datetime_formatted,$tpl);
+	$tpl = preg_replace("<IMAGE_NOTES>",$image_notes,$tpl);
 
 	// image notes without HTML tags and double quotes
 	$image_notes_clean = strip_tags($image_notes);
 	$image_notes_clean = htmlspecialchars($image_notes_clean,ENT_NOQUOTES);
 	$image_notes_clean = str_replace('"',"'",$image_notes_clean);
-	$tpl = ereg_replace("<IMAGE_NOTES_CLEAN>",$image_notes_clean,$tpl);
+	$tpl = preg_replace("<IMAGE_NOTES_CLEAN>",$image_notes_clean,$tpl);
 
-	$tpl = ereg_replace("<IMAGE_ID>",$image_id,$tpl);
-	$tpl = ereg_replace("<IMAGE_PERMALINK>",$image_permalink,$tpl);
-	$tpl = ereg_replace("<IMAGE_PREVIOUS_LINK>",$image_previous_link,$tpl);
-	$tpl = ereg_replace("<IMAGE_PREVIOUS_THUMBNAIL>",$image_previous_thumbnail,$tpl);
-	$tpl = ereg_replace("<IMAGE_PREVIOUS_ID>",$image_previous_id,$tpl);
-	$tpl = ereg_replace("<IMAGE_PREVIOUS_TITLE>",$image_previous_title,$tpl);
-	$tpl = ereg_replace("<IMAGE_NEXT_LINK>",$image_next_link,$tpl);
-	$tpl = ereg_replace("<IMAGE_NEXT_ID>",$image_next_id,$tpl);
-	$tpl = ereg_replace("<IMAGE_NEXT_TITLE>",$image_next_title,$tpl);
-	$tpl = ereg_replace("<IMAGE_NEXT_THUMBNAIL>",$image_next_thumbnail,$tpl);
+	$tpl = preg_replace("<IMAGE_ID>",$image_id,$tpl);
+	$tpl = preg_replace("<IMAGE_PERMALINK>",$image_permalink,$tpl);
+	$tpl = preg_replace("<IMAGE_PREVIOUS_LINK>",$image_previous_link,$tpl);
+	$tpl = preg_replace("<IMAGE_PREVIOUS_THUMBNAIL>",$image_previous_thumbnail,$tpl);
+	$tpl = preg_replace("<IMAGE_PREVIOUS_ID>",$image_previous_id,$tpl);
+	$tpl = preg_replace("<IMAGE_PREVIOUS_TITLE>",$image_previous_title,$tpl);
+	$tpl = preg_replace("<IMAGE_NEXT_LINK>",$image_next_link,$tpl);
+	$tpl = preg_replace("<IMAGE_NEXT_ID>",$image_next_id,$tpl);
+	$tpl = preg_replace("<IMAGE_NEXT_TITLE>",$image_next_title,$tpl);
+	$tpl = preg_replace("<IMAGE_NEXT_THUMBNAIL>",$image_next_thumbnail,$tpl);
 
-	$tpl = ereg_replace("<IMAGE_LAST_LINK>",$last_image_link,$tpl);
-	$tpl = ereg_replace("<IMAGE_LAST_THUMBNAIL>",$last_image_thumbnail,$tpl);
-	$tpl = ereg_replace("<IMAGE_LAST_ID>",$last_image_id,$tpl);
-	$tpl = ereg_replace("<IMAGE_LAST_TITLE>",$last_image_title,$tpl);
-	$tpl = ereg_replace("<IMAGE_FIRST_LINK>",$first_image_link,$tpl);
-	$tpl = ereg_replace("<IMAGE_FIRST_ID>",$first_image_id,$tpl);
-	$tpl = ereg_replace("<IMAGE_FIRST_TITLE>",$first_image_title,$tpl);
-	$tpl = ereg_replace("<IMAGE_FIRST_THUMBNAIL>",$first_image_thumbnail,$tpl);
+	$tpl = preg_replace("<IMAGE_LAST_LINK>",$last_image_link,$tpl);
+	$tpl = preg_replace("<IMAGE_LAST_THUMBNAIL>",$last_image_thumbnail,$tpl);
+	$tpl = preg_replace("<IMAGE_LAST_ID>",$last_image_id,$tpl);
+	$tpl = preg_replace("<IMAGE_LAST_TITLE>",$last_image_title,$tpl);
+	$tpl = preg_replace("<IMAGE_FIRST_LINK>",$first_image_link,$tpl);
+	$tpl = preg_replace("<IMAGE_FIRST_ID>",$first_image_id,$tpl);
+	$tpl = preg_replace("<IMAGE_FIRST_TITLE>",$first_image_title,$tpl);
+	$tpl = preg_replace("<IMAGE_FIRST_THUMBNAIL>",$first_image_thumbnail,$tpl);
 
 	// Added support for Thumbnail width and height
 	$tpl = str_replace("<THUMBNAIL_WIDTH>",$cfgrow['thumbwidth'],$tpl);
@@ -836,19 +836,19 @@ if(!isset($_GET['x']))
  	$vinfo_url   =  "";
  	$vinfo_email =  "";
 
- 	if(isset($_COOKIE['visitorinfo'])){ list($vinfo_name,$vinfo_url,$vinfo_email) = split("%",$_COOKIE['visitorinfo']); }
+ 	if(isset($_COOKIE['visitorinfo'])){ list($vinfo_name,$vinfo_url,$vinfo_email) = explode("%",$_COOKIE['visitorinfo']); }
 
- 	$tpl = ereg_replace("<VINFO_NAME>",$vinfo_name,$tpl);
- 	$tpl = ereg_replace("<VINFO_URL>",$vinfo_url,$tpl);
- 	$tpl = ereg_replace("<VINFO_EMAIL>",$vinfo_email,$tpl);
+ 	$tpl = preg_replace("<VINFO_NAME>",$vinfo_name,$tpl);
+ 	$tpl = preg_replace("<VINFO_URL>",$vinfo_url,$tpl);
+ 	$tpl = preg_replace("<VINFO_EMAIL>",$vinfo_email,$tpl);
 
  	if($cfgrow['token'] == 'T')
  	{
- 		$tpl = ereg_replace("<TOKEN>","<input type='hidden' name='token' value='".$_SESSION['token']."' />",$tpl);
+ 		$tpl = preg_replace("<TOKEN>","<input type='hidden' name='token' value='".$_SESSION['token']."' />",$tpl);
  	}
  	else
  	{
- 		$tpl = ereg_replace("<TOKEN>",null,$tpl);
+ 		$tpl = preg_replace("<TOKEN>",null,$tpl);
  	}
 
 	if(isset($_GET['showimage']) && $_GET['showimage'] != "")
@@ -861,7 +861,7 @@ if(!isset($_GET['x']))
 	}
 
 	$image_comments = print_comments($imageid);
-	$tpl = ereg_replace("<IMAGE_COMMENTS>",$image_comments,$tpl);
+	$tpl = preg_replace("<IMAGE_COMMENTS>",$image_comments,$tpl);
 
 	if((isset($_GET['popup']) && $_GET['popup'] == "comment") AND (!isset($_GET['x']) OR $_GET['x'] != "save_comment"))
 	{
@@ -871,8 +871,8 @@ if(!isset($_GET['x']))
 	}
 } // End Images / Main site
 
-$tpl = ereg_replace("<SITE_TITLE>",$pixelpost_site_title,$tpl);
-$tpl = ereg_replace("<SUB_TITLE>",$pixelpost_sub_title,$tpl);
+$tpl = preg_replace("<SITE_TITLE>",$pixelpost_site_title,$tpl);
+$tpl = preg_replace("<SUB_TITLE>",$pixelpost_sub_title,$tpl);
 
 // ##########################################################################################//
 // BROWSE STUFF
@@ -893,39 +893,39 @@ require_once("includes/functions_feeds.php");
 // Creating other tags
 // ########################################################################################
 
-$tpl = ereg_replace("<SITE_BROWSELINK>","./".PHP_SELF."?x=browse",$tpl);
-$tpl = ereg_replace("<SITE_BROWSELINK_PAGED>","./".PHP_SELF."?x=browse&amp;pagenum=1",$tpl);
+$tpl = preg_replace("<SITE_BROWSELINK>","./".PHP_SELF."?x=browse",$tpl);
+$tpl = preg_replace("<SITE_BROWSELINK_PAGED>","./".PHP_SELF."?x=browse&amp;pagenum=1",$tpl);
 
 
 if(!isset($_GET['x']) || isset($_GET['showimage']))
 {
-	$tpl = ereg_replace("<SITE_VISITORNUMBER>",$pixelpost_visitors,$tpl);
-	$tpl = ereg_replace("<IMAGE_COMMENTS_NUMBER>",$image_comments_number,$tpl);
-	$tpl = ereg_replace("<LATEST_COMMENT_ID>",$latest_comment,$tpl);
-	$tpl = ereg_replace("<LATEST_COMMENT_NAME>",$latest_comment_name,$tpl);
+	$tpl = preg_replace("<SITE_VISITORNUMBER>",$pixelpost_visitors,$tpl);
+	$tpl = preg_replace("<IMAGE_COMMENTS_NUMBER>",$image_comments_number,$tpl);
+	$tpl = preg_replace("<LATEST_COMMENT_ID>",$latest_comment,$tpl);
+	$tpl = preg_replace("<LATEST_COMMENT_NAME>",$latest_comment_name,$tpl);
 	
 	if($image_comments_number != 1)
 	{
-		$tpl = ereg_replace("<IMAGE_COMMENT_TEXT>",$lang_comment_plural,$tpl);
+		$tpl = preg_replace("<IMAGE_COMMENT_TEXT>",$lang_comment_plural,$tpl);
 	}
 	else
 	{
-		$tpl = ereg_replace("<IMAGE_COMMENT_TEXT>",$lang_comment_single,$tpl);
+		$tpl = preg_replace("<IMAGE_COMMENT_TEXT>",$lang_comment_single,$tpl);
 	}
 	
 	if($row['comments'] == 'F')
 	{
-		$tpl = ereg_replace("<COMMENT_POPUP>","<a href='".PHP_SELF."?showimage=$image_id' onclick=\"alert('$lang_comment_popup_disabled');\">$lang_comment_popup</a>",$tpl);
+		$tpl = preg_replace("<COMMENT_POPUP>","<a href='".PHP_SELF."?showimage=$image_id' onclick=\"alert('$lang_comment_popup_disabled');\">$lang_comment_popup</a>",$tpl);
 	}
 	else
 	{
-		$tpl = ereg_replace("<COMMENT_POPUP>","<a href='".PHP_SELF."?showimage=$image_id' onclick=\"window.open('".PHP_SELF."?popup=comment&amp;showimage=$image_id','Comments','width=480,height=540,scrollbars=yes,resizable=yes');\">$lang_comment_popup</a>",$tpl);
+		$tpl = preg_replace("<COMMENT_POPUP>","<a href='".PHP_SELF."?showimage=$image_id' onclick=\"window.open('".PHP_SELF."?popup=comment&amp;showimage=$image_id','Comments','width=480,height=540,scrollbars=yes,resizable=yes');\">$lang_comment_popup</a>",$tpl);
 	}
 }
 
 $tpl = str_replace("<BASE_HREF>","<base href='".$cfgrow['siteurl']."' />",$tpl);
-$tpl = ereg_replace("<SITE_URL>",$cfgrow['siteurl'],$tpl);
-$tpl = ereg_replace("<SITE_PHOTONUMBER>",$pixelpost_photonumb,$tpl);
+$tpl = preg_replace("<SITE_URL>",$cfgrow['siteurl'],$tpl);
+$tpl = preg_replace("<SITE_PHOTONUMBER>",$pixelpost_photonumb,$tpl);
 
 // ##########################################################################################//
 // COMMENT STUFF

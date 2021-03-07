@@ -1,5 +1,7 @@
 <?php
-
+require('pixelpost.php');
+//require('FirePHPCore/fb.php');
+$con = mysqli_connect($pixelpost_db_host,$pixelpost_db_user,$pixelpost_db_pass,$pixelpost_db_pixelpost);
 // SVN file version:
 // $Id$
 
@@ -24,38 +26,6 @@ function PP_unregister_GLOBALS() {
 			$GLOBALS[$k] = NULL;
 			unset($GLOBALS[$k]);
 		}
-}
-
-
-/**
- * Magic Quotes KILLER *dun! dun! dun!*
- *
- * Will strip all formating applied by magic quotes to any GLOBAL listed in the $in array
- * All data will have to be manually escaped before use.
- *
- * FYI: Magic quotes will be DEPRECIATED and REMOVED from PHP as of version 6!
- * @author http://talks.php.net/show/php-best-practices/26
- */
-if(get_magic_quotes_gpc())
-{
-	if(isset($_GET) OR isset($_POST))// OR isset($_COOKIE) OR isset($_SESSION)
-	{
-		$in = array(&$_GET, &$_POST);//, &$_COOKIE, &$_SESSION);
-		while(list($k,$v) = each($in))
-		{
-			foreach($v as $key => $val)
-			{
-				if(!is_array($val))
-				{
-					$in[$k][$key] = stripslashes($val);
-					continue;
-				}
-				$in[] =& $in[$k][$key];
-			}
-		}
-		//var_dump($in);
-		unset($in);
-	}
 }
 
 
@@ -160,7 +130,7 @@ function check_email_address($email)
 		return false;
 	}
 
-	if(!preg_match('/^[^@]{1,64}@[^@]{1,255}$/', $email)) // Check that there's one @ symbol, and that the lengths are right
+	if(!preg_match('/^[^@][1,64]@[^@][1,255]$/', $email)) // Check that there's one @ symbol, and that the lengths are right
 	{
 		return false;
 	}
@@ -171,13 +141,13 @@ function check_email_address($email)
 	
 	foreach($local_array as $local_part)
 	{
-		if(!preg_match('/^(([A-Za-z0-9!#$%&\'*+\/=?^_`{|}~-]+)|("[^"]+"))$/', $local_part))
+		if(!preg_match('/^(([A-Za-z0-9!#$%&\'*+\/=?^_`[|]~-]+)|("[^"]+"))$/', $local_part))
 		{
 			return false;
 		}
 	}
 	
-	if(preg_match('/^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$/', $email_array[1]) OR preg_match('/^\[(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}\]$/', $email_array[1])) // Check domain section
+	if(preg_match('/^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))[3]$/', $email_array[1]) OR preg_match('/^\[(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))[3]\]$/', $email_array[1])) // Check domain section
 	{
 		return true; // If an IP address
 	}
@@ -190,7 +160,7 @@ function check_email_address($email)
 		}
 		foreach($domain_array as $domain_part)
 		{
-			if(!preg_match('/^(([A-Za-z0-9][A-Za-z0-9-]{0,61}[A-Za-z0-9])|([A-Za-z0-9]))$/', $domain_part))
+			if(!preg_match('/^(([A-Za-z0-9][A-Za-z0-9-][0,61][A-Za-z0-9])|([A-Za-z0-9]))$/', $domain_part))
 			{
 				return false;
 			}
@@ -206,21 +176,22 @@ function check_email_address($email)
  */
 function Get_Pixelpost_Version($prefix)
 {
+	global $con;
 	// First, check to see if we are >= v1.4
-	$query = mysql_query("SELECT `version` FROM `{$prefix}version` ORDER BY `version` DESC LIMIT 1");
+	$query = mysqli_query($con,"SELECT `version` FROM `{$prefix}version` ORDER BY `version` DESC LIMIT 1");
 	if($query)
 	{
-		if($row = mysql_fetch_array($query,MYSQL_NUM))
+		if($row = mysqli_fetch_array($query,MYSQLI_NUM))
 		{
 			if($row[0] > 1.3) return $row[0];
 		}
 	}
 
 	// Second, check to see if we are installed?
-	$query = @mysql_query("SELECT COUNT(admin) FROM `{$prefix}config`");
+	$query = @mysqli_query($con,"SELECT COUNT(admin) FROM `{$prefix}config`");
 	if($query)
 	{
-		if($row = mysql_fetch_array($query,MYSQL_NUM))
+		if($row = mysqli_fetch_array($query,MYSQLI_NUM))
 		{
 			if($row[0] > 0) return 1.3;	// This could also be 1.2, but that is okay
 		}
@@ -234,13 +205,13 @@ function Get_Pixelpost_Version($prefix)
  */
 function print_comments($imageid)
 {
-	global $pixelpost_db_prefix, $lang_no_comments_yet, $lang_visit_homepage, $cfgrow;
+	global $pixelpost_db_prefix, $lang_no_comments_yet, $lang_visit_homepage, $cfgrow, $con;
 
 	$image_comments = '<ul>';
 	
-	$cquery = mysql_query("SELECT `datetime`, `message`, `name`, `url`, `email` FROM `".$pixelpost_db_prefix."comments` WHERE `parent_id` = '".$imageid."' AND `publish` = 'yes' ORDER BY `id` ASC");
+	$cquery = mysqli_query($con,"SELECT `datetime`, `message`, `name`, `url`, `email` FROM `".$pixelpost_db_prefix."comments` WHERE `parent_id` = '".$imageid."' AND `publish` = 'yes' ORDER BY `id` ASC");
 	$comment_count = 0;
-	while(list($comment_datetime, $comment_message, $comment_name, $comment_url, $comment_email) = mysql_fetch_row($cquery))
+	while(list($comment_datetime, $comment_message, $comment_name, $comment_url, $comment_email) = mysqli_fetch_row($cquery))
 	{
 		$comment_name	 = pullout($comment_name);
 		$comment_email	 = pullout($comment_email);
@@ -309,12 +280,12 @@ function check_upload($string)
  */
 function createthumbnail($file)
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 	
 	$img = null;
 	
-	$cfgquery = mysql_query("SELECT * FROM `".$pixelpost_db_prefix."config`");
-	$cfgrow   = mysql_fetch_array($cfgquery,MYSQL_ASSOC);
+	$cfgquery = mysqli_query($con,"SELECT * FROM `".$pixelpost_db_prefix."config`");
+	$cfgrow   = mysqli_fetch_array($cfgquery,MYSQLI_ASSOC);
 	
 	// credit to codewalkers.com - there is 90% a tutorial there
 	$max_width  = $cfgrow['thumbwidth'];
@@ -449,7 +420,10 @@ function unsharp_mask($img, $sharpeningsetting){
     if($threshold > 255)    $threshold = 255;
     
     $radius = abs(round($radius)); // Only integers make sense.
-    if($radius == 0) { return $img; imagedestroy($img); break; }
+    if($radius == 0) { 
+		return $img; 
+		imagedestroy($img);
+	}
     $w = imagesx($img);
     $h = imagesy($img); 
     $imgCanvas = imagecreatetruecolor($w, $h); 
@@ -479,7 +453,8 @@ function unsharp_mask($img, $sharpeningsetting){
 		// according to the matrix. The same matrix is simply repeated for higher radii. 
 		for ($i = 0; $i < $radius; $i++)    { 
             imagecopy ($imgBlur, $img, 0, 0, 1, 0, $w - 1, $h); // left 
-            imagecopymerge ($imgBlur, $img, 1, 0, 0, 0, $w, $h, 50); // right 
+    	
+			imagecopymerge ($imgBlur, $img, 1, 0, 0, 0, $w, $h, 50); // right 
             imagecopymerge ($imgBlur, $img, 0, 0, 0, 0, $w, $h, 50); // center 
             imagecopy ($imgCanvas, $imgBlur, 0, 0, 0, 0, $w, $h); 
 
@@ -561,14 +536,16 @@ function unsharp_mask($img, $sharpeningsetting){
 
 function sql_query($str)
 {
+	global $con;
 	$query = "$str";
-	$result = mysql_query($query) || die(mysql_error());
+	$result = mysqli_query($con,$query) || die(mysqli_error($con));
 }
 
 function sql_array($str)
 {
-	$query = mysql_query($str) or die( mysql_error());
-	$row = mysql_fetch_array($query,MYSQL_BOTH);
+	global $con;
+	$query = mysqli_query($con,$str) or die( mysqli_error($con));
+	$row = mysqli_fetch_array($query,MYSQLI_BOTH);
 	return $row;
 }
 
@@ -608,7 +585,7 @@ function book_visitor($str)
 {
 	if(!isset($_COOKIE['lastvisit'])) // If the cookie 'lastvisit' is not set, count the person
 	{
-		global $cfgrow;
+		global $cfgrow, $con;
 		
 		$datetime = gmdate("Y-m-d H:i:s",gmdate("U")+(3600 * $cfgrow['timezone']));
 		$host = $_SERVER['HTTP_HOST'];
@@ -630,7 +607,7 @@ function book_visitor($str)
 		$ip   = $_SERVER['REMOTE_ADDR'];
 		$ruri = addslashes($_SERVER['REQUEST_URI']);
 		
-		$query = mysql_query("INSERT INTO `$str`(`id`,`datetime`,`host`,`referer`,`ua`,`ip`,`ruri`) VALUES (NULL,'$datetime','$host','$referer','$ua','$ip','$ruri')");
+		$query = mysqli_query($con,"INSERT INTO `$str`(`id`,`datetime`,`host`,`referer`,`ua`,`ip`,`ruri`) VALUES (NULL,'$datetime','$host','$referer','$ua','$ip','$ruri')");
 	}
 }
 
@@ -638,10 +615,10 @@ function book_visitor($str)
  * Start the database connection
  *
  */
-function start_mysql($config_file = 'includes/pixelpost.php', $request_uri = 'front')
+function start_mysqli($config_file = 'includes/pixelpost.php', $request_uri = 'front')
 {
-	global $pixelpost_db_host, $pixelpost_db_user, $pixelpost_db_pass, $pixelpost_db_pixelpost;
-	
+	global $pixelpost_db_host, $pixelpost_db_user, $pixelpost_db_pass, $pixelpost_db_pixelpost, $con;
+
 	$dir = 'templates';
 	
 	if(!file_exists($dir ."/splash_page.html"))
@@ -651,10 +628,10 @@ function start_mysql($config_file = 'includes/pixelpost.php', $request_uri = 'fr
 	
 	if(!file_exists($config_file))
 	{
-		show_splash("Connect DB Error: ". mysql_error()." Cause #1",$dir);
+		show_splash("Connect DB Error: ". mysqli_error($con)." Cause #1",$dir);
 	}
 		
-	if(!mysql_connect($pixelpost_db_host, $pixelpost_db_user, $pixelpost_db_pass))
+	if(!$con)
 	{
 		if($request_uri == 'admin')
 		{
@@ -663,11 +640,11 @@ function start_mysql($config_file = 'includes/pixelpost.php', $request_uri = 'fr
 		}
 		else
 		{
-			show_splash("Connect DB Error: ". mysql_error()." Cause #2",$dir);
+			show_splash("Connect DB Error: ". mysqli_error($con)." Cause #2",$dir);
 		}
 	}
 
-	if(!mysql_select_db($pixelpost_db_pixelpost))
+	if(!$con($pixelpost_db_pixelpost))
 	{
 		if($request_uri == 'admin')
 		{
@@ -676,7 +653,7 @@ function start_mysql($config_file = 'includes/pixelpost.php', $request_uri = 'fr
 		}
 		else
 		{
-			show_splash("Select DB Error: ". mysql_error()." Cause #2",$dir);
+			show_splash("Select DB Error: ". mysqli_error($con)." Cause #2",$dir);
 		}
 	}
 }
@@ -690,7 +667,7 @@ function show_splash($extra_message,$splash_dir)
 	if(file_exists($splash_dir."/splash_page.html"))
 	{
 		$splash = file_get_contents($splash_dir.'/splash_page.html');
-		$splash = ereg_replace("<ERROR_MESSAGE>",$extra_message,$splash);
+		$splash = preg_replace("<ERROR_MESSAGE>",$extra_message,$splash);
 		die($splash);
 	}
 	else
@@ -705,7 +682,7 @@ function show_splash($extra_message,$splash_dir)
  */
 function &reduceExif($exifvalue)
 {
-	$vals = split("/",$exifvalue);
+	$vals = explode("/",$exifvalue);
 	if(count($vals) == 2)
 	{
 		// MJS 29092005 - Code to deal with exposure times of > 1 sec
@@ -733,13 +710,13 @@ function &reduceExif($exifvalue)
  */
 function category_list_as_table($categories, $cfgrow)
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
 	if(!is_array($categories)){ $categories = array(); }
 	
 	// get the id and name of the first entered category, default category.
-	$query = mysql_query("SELECT * FROM `".$pixelpost_db_prefix."categories` ORDER BY `id` ASC LIMIT 0,1");
-	list($firstid,$firstname) = mysql_fetch_row($query);
+	$query = mysqli_query($con,"SELECT * FROM `".$pixelpost_db_prefix."categories` ORDER BY `id` ASC LIMIT 0,1");
+	list($firstid,$firstname) = mysqli_fetch_row($query);
 	
 	$getid = isset($_GET['id']);
 	$getid = intval($getid);
@@ -747,14 +724,14 @@ function category_list_as_table($categories, $cfgrow)
 	// begin of category-list as a table
 	
 	$x = 0;
-	$query = mysql_query("SELECT t1.id, `name`, `alt_name`, `image_id` FROM `".$pixelpost_db_prefix."categories` AS t1 LEFT JOIN `".$pixelpost_db_prefix."catassoc` t2 ON t2.cat_id = t1.id AND t2.image_id = '$getid' ORDER BY t1.name");
-	while(list($id,$name) = mysql_fetch_row($query))
+	$query = mysqli_query($con,"SELECT t1.id, `name`, `alt_name`, `image_id` FROM `".$pixelpost_db_prefix."categories` AS t1 LEFT JOIN `".$pixelpost_db_prefix."catassoc` t2 ON t2.cat_id = t1.id AND t2.image_id = '$getid' ORDER BY t1.name");
+	while(list($id,$name) = mysqli_fetch_row($query))
 	{
 		echo "<table id='cattable'><tr>";
 		
 		$catcounter = 0;
-		$query = mysql_query("SELECT t1.id, `name`, `alt_name`, `image_id` FROM `".$pixelpost_db_prefix."categories` AS t1 LEFT JOIN `".$pixelpost_db_prefix."catassoc` t2 ON t2.cat_id = t1.id AND t2.image_id = '$getid' ORDER BY t1.name");
-		while(list($id,$name,$alt_name,$image_id) = mysql_fetch_row($query))
+		$query = mysqli_query($con,"SELECT t1.id, `name`, `alt_name`, `image_id` FROM `".$pixelpost_db_prefix."categories` AS t1 LEFT JOIN `".$pixelpost_db_prefix."catassoc` t2 ON t2.cat_id = t1.id AND t2.image_id = '$getid' ORDER BY t1.name");
+		while(list($id,$name,$alt_name,$image_id) = mysqli_fetch_row($query))
 		{
 			$name = pullout($name);
 			
@@ -809,9 +786,9 @@ function refresh_addons_table($dir){
  */
 function add_new_addons_2table($dir){
 
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
-	$query = mysql_query("SELECT * FROM `".$pixelpost_db_prefix."addons` LIMIT 1");
+	$query = mysqli_query($con,"SELECT * FROM `".$pixelpost_db_prefix."addons` LIMIT 1");
 	if($query){
 	
 		$str = '';
@@ -862,8 +839,8 @@ function add_new_addons_2table($dir){
 												$query = "INSERT INTO `{$pixelpost_db_prefix}addons` VALUES ( NULL, '$filename', 'off', 'normal')";
 												break; 	
 										}
-										mysql_query($query);
-										if(mysql_error()){ echo 'Failed to insert addon: ' .$filename .'.php'; }
+										mysqli_query($con, $query);
+										if(mysqli_error($con)){ echo 'Failed to insert addon: ' .$filename .'.php'; }
 									}
 								}
 								closedir($handle_subdir);
@@ -896,8 +873,8 @@ function add_new_addons_2table($dir){
 								$query = "INSERT INTO {$pixelpost_db_prefix}addons VALUES ( NULL, '$filename', 'off', 'normal')";
 								break; 	
 						}
-						mysql_query( $query);
-						if(mysql_error()){ echo 'Failed to insert addon: ' .$filename .'.php'; }
+						mysqli_query($con, $query);
+						if(mysqli_error($con)){ echo 'Failed to insert addon: ' .$filename .'.php'; }
 					}
 				}
 			}
@@ -912,18 +889,18 @@ function add_new_addons_2table($dir){
  */
 function delete_obsolete_addon($dir)
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
-	$query = mysql_query("SELECT * FROM `".$pixelpost_db_prefix."addons` LIMIT 1");
+	$query = mysqli_query($con,"SELECT * FROM `".$pixelpost_db_prefix."addons` LIMIT 1");
 	if($query)
 	{
-		$query = mysql_query("SELECT `id`, `addon_name` FROM `".$pixelpost_db_prefix."addons`");
-		while(@list($id, $addon_name) = mysql_fetch_row($query))
+		$query = mysqli_query($con,"SELECT `id`, `addon_name` FROM `".$pixelpost_db_prefix."addons`");
+		while(@list($id, $addon_name) = mysqli_fetch_row($query))
 		{
 			if(!file_exists($dir.$addon_name.'.php'))
 			{
-				mysql_query("DELETE FROM `".$pixelpost_db_prefix."addons` WHERE `id` = '$id'");
-				if(mysql_error()){ echo 'Failed to delete the addon_name: '.$addon_name; }
+				mysqli_query($con,"DELETE FROM `".$pixelpost_db_prefix."addons` WHERE `id` = '$id'");
+				if(mysqli_error($con)){ echo 'Failed to delete the addon_name: '.$addon_name; }
 			}
 		}
 	}
@@ -935,10 +912,11 @@ function delete_obsolete_addon($dir)
  */
 function check_addon_exists($name,$db_prefix)
 {
+	global $con;
 	$returnvalue = FALSE;
 	$query = "select id from {$db_prefix}addons where addon_name='$name'";
-	$query = mysql_query($query);
-	while (list($id)= mysql_fetch_row($query))
+	$query = mysqli_query($con,$query);
+	while (list($id)= mysqli_fetch_row($query))
 	{
 		if (is_numeric($id))	$returnvalue = TRUE;
 	}
@@ -951,9 +929,9 @@ function check_addon_exists($name,$db_prefix)
  */
 function is_table_created($table_name)
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
-	$query = mysql_query("SELECT `id` FROM `{$pixelpost_db_prefix}".$table_name."` LIMIT 1");
+	$query = mysqli_query($con,"SELECT `id` FROM `{$pixelpost_db_prefix}".$table_name."` LIMIT 1");
 	
 	if(!$query)
 	{
@@ -969,7 +947,7 @@ function is_table_created($table_name)
  */
 function is_field_exists($fieldname,$table)
 {
-	global $pixelpost_db_prefix, $pixelpost_db_pixelpost, $table_name;
+	global $pixelpost_db_prefix, $pixelpost_db_pixelpost, $table_name, $con;
 		
 	$table = $pixelpost_db_prefix.$table;
 	$fieldexists = FALSE;
@@ -977,11 +955,11 @@ function is_field_exists($fieldname,$table)
 	$attention_call = '';
 	if($table != '')
 	{
-		$result_id = mysql_list_fields($pixelpost_db_pixelpost, $table);
+		$result_id = mysqli_query($con,"SHOW COLUMNS FROM ".$table);
 		
-		for($t = 0; $t < mysql_num_fields($result_id); $t++)
+		for($t = 0; $t < mysqli_num_fields($result_id); $t++)
 		{
-			$msql_fname = mysql_field_name($result_id, $t);
+			$msql_fname = mysqli_fetch_field($result_id, $t);
 
 			if(strtolower($fieldname) == strtolower($msql_fname))
 			{
@@ -1102,13 +1080,13 @@ function eval_addon_front_workspace($workspace)
  */
 function create_admin_addon_array()
 {
-	global $addon_admin_functions, $pixelpost_db_prefix;
+	global $addon_admin_functions, $pixelpost_db_prefix, $con;
 	
 	if(isset($_GET['view']) AND $_GET['view'] != "addons" OR !isset($_GET['view']))
 	{
-		$addons = mysql_query("SELECT * FROM `{$pixelpost_db_prefix}addons` WHERE `status` = 'on' AND `type` = 'admin' ORDER BY `id` ASC");  
+		$addons = mysqli_query($con,"SELECT * FROM `{$pixelpost_db_prefix}addons` WHERE `status` = 'on' AND `type` = 'admin' ORDER BY `id` ASC");  
 
-		while(list($id, $filename, $status, $addon_type) = mysql_fetch_row($addons))
+		while(list($id, $filename, $status, $addon_type) = mysqli_fetch_row($addons))
 		{
 			require_once(ADDON_DIR.$filename.'.php');
 		}
@@ -1121,11 +1099,11 @@ function create_admin_addon_array()
  */
 function create_front_addon_array()
 {
-	global $addon_front_functions, $pixelpost_db_prefix;
+	global $addon_front_functions, $pixelpost_db_prefix, $con;
 	
-	$query = mysql_query("SELECT * FROM `{$pixelpost_db_prefix}addons` WHERE `status` = 'on' AND `type` = 'front'");
+	$query = mysqli_query($con,"SELECT * FROM `{$pixelpost_db_prefix}addons` WHERE `status` = 'on' AND `type` = 'front'");
 		
-	while(list($id, $filename, $status, $addon_type) = mysql_fetch_row($query))
+	while(list($id, $filename, $status, $addon_type) = mysqli_fetch_row($query))
 	{
 		include_once(ADDON_DIR.$filename.'.php');
 	}
@@ -1249,7 +1227,7 @@ $tz_array = array('-12'   => '[UTC - 12]',
 // Update the ban list if the form is called
 function update_banlist()
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $admin_lang_spam_err_2, $admin_lang_spam_err_3, $admin_lang_spam_err_4, $admin_lang_spam_err_5, $admin_lang_spam_upd, $con;
 	
 	$result = '';
 	
@@ -1262,16 +1240,16 @@ function update_banlist()
 			$banlist = str_replace( "\r", "\n", $banlist);
 			if(version_compare(phpversion(),"4.3.0")=="-1")
 			{
-				$banlist = mysql_escape_string($banlist);
+				$banlist = mysqli_escape_string($con, $banlist);
 			}
 			else
 			{
-				$banlist = mysql_real_escape_string($banlist);
+				$banlist = mysqli_real_escape_string($con, $banlist);
 			}
 
 			$query = "UPDATE `{$pixelpost_db_prefix}banlist` SET `moderation_list` = '$banlist' LIMIT 1";
-			mysql_query($query) ;
-			if(mysql_error()){ $result .= "$admin_lang_spam_err_2".mysql_error()."<br/>"; }
+			mysqli_query($con,$query) ;
+			if(mysqli_error($con)){ $result .= "$admin_lang_spam_err_2".mysqli_error($con)."<br/>"; }
 		}
 		// black list
 		if(isset( $_POST['blacklist']))
@@ -1281,16 +1259,16 @@ function update_banlist()
 			
 			if(version_compare(phpversion(),"4.3.0")=="-1")
 			{
-				$banlist = mysql_escape_string($banlist);
+				$banlist = mysqli_escape_string($con, $banlist);
 			}
 			else
 			{
-				$banlist = mysql_real_escape_string($banlist);
+				$banlist = mysqli_real_escape_string($con, $banlist);
 			}
 
 			$query = "UPDATE `{$pixelpost_db_prefix}banlist` SET `blacklist` = '$banlist' LIMIT 1";
-			mysql_query($query) ;
-			if(mysql_error()){ $result .= "$admin_lang_spam_err_3".mysql_error()."<br/>"; }
+			mysqli_query($con,$query) ;
+			if(mysqli_error($con)){ $result .= "$admin_lang_spam_err_3".mysqli_error($con)."<br/>"; }
 		}
 		// referer ban list
 		if(isset($_POST['ref_ban_list']))
@@ -1300,16 +1278,16 @@ function update_banlist()
 
 			if(version_compare(phpversion(), "4.3.0")=="-1")
 			{
-				$banlist = mysql_escape_string($banlist);
+				$banlist = mysqli_escape_string($con, $banlist);
 			}
 			else
 			{
-				$banlist = mysql_real_escape_string($banlist);
+				$banlist = mysqli_real_escape_string($con, $banlist);
 			}
 
 			$query = "UPDATE `{$pixelpost_db_prefix}banlist` SET `ref_ban_list` = '$banlist' LIMIT 1";
-			mysql_query($query) ;
-			if(mysql_error()){ $result .= "$admin_lang_spam_err_4 ".mysql_error()."<br/>"; }
+			mysqli_query($con,$query) ;
+			if(mysqli_error($con)){ $result .= "$admin_lang_spam_err_4 ".mysqli_error($con)."<br/>"; }
 		}
 		// acceptable_num_links
 		if(isset($_POST['acceptable_num_links']))
@@ -1317,8 +1295,8 @@ function update_banlist()
 			$acceptable_num_links = clean($_POST['acceptable_num_links']);
 			
 			$query = "UPDATE `{$pixelpost_db_prefix}banlist` SET `acceptable_num_links` = '$acceptable_num_links' LIMIT 1";
-			mysql_query($query) ;
-			if(mysql_error()){ $result .= "$admin_lang_spam_err_5 ".mysql_error()."<br/>"; }
+			mysqli_query($con,$query) ;
+			if(mysqli_error($con)){ $result .= "$admin_lang_spam_err_5 ".mysqli_error($con)."<br/>"; }
 		}
 		if(!isset($result))	$result = "$admin_lang_spam_upd";
 
@@ -1363,13 +1341,13 @@ function clean_banlists($p_value)
  */
 function get_moderation_banlist()
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 	
-	$query = mysql_query("SELECT `moderation_list` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1")or die(mysql_error());
+	$query = mysqli_query($con,"SELECT `moderation_list` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1")or die(mysqli_error($con));
 
-	if($row = mysql_fetch_row($query)){ $banlist = $row[0]; }
+	if($row = mysqli_fetch_row($query)){ $banlist = $row[0]; }
 	
-	$moderation_ban_list_array         = split("[\n|\r]", $banlist);
+	$moderation_ban_list_array         = explode("[\n|\r]", $banlist);
 	$unique_moderation_ban_list_array  = array_keys(array_flip($moderation_ban_list_array));
 	$cleaned_moderation_ban_list_array = clean_banlists ($unique_moderation_ban_list_array);
 	
@@ -1392,13 +1370,13 @@ function get_moderation_banlist()
  */
 function get_blacklist()
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 	
-	$query = mysql_query("SELECT `blacklist` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1")or die( mysql_error());
+	$query = mysqli_query($con,"SELECT `blacklist` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1")or die( mysqli_error($con));
 	
-	if($row = mysql_fetch_row($query)){ $banlist = $row[0]; }
+	if($row = mysqli_fetch_row($query)){ $banlist = $row[0]; }
 	
-	$blacklist_array		 = split("[\n|\r]", $banlist);
+	$blacklist_array		 = explode("[\n|\r]", $banlist);
 	$unique_blacklist_array  = array_keys(array_flip($blacklist_array));
 	$cleaned_blacklist_array = clean_banlists ($unique_blacklist_array);
 	
@@ -1421,13 +1399,13 @@ function get_blacklist()
  */
 function get_ref_ban_list()
 {
-  global $pixelpost_db_prefix;
+  global $pixelpost_db_prefix, $con;
   
-	$query = mysql_query("SELECT `ref_ban_list` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1") or die( mysql_error());
+	$query = mysqli_query($con,"SELECT `ref_ban_list` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1") or die( mysqli_error($con));
 	
-	if($row = mysql_fetch_row($query)){ $banlist = $row[0]; }
+	if($row = mysqli_fetch_row($query)){ $banlist = $row[0]; }
 
-	$ref_ban_list_array         = split("[\n|\r]", $banlist);
+	$ref_ban_list_array         = explode("[\n|\r]", $banlist);
 	$unique_ref_ban_list_array  = array_keys(array_flip($ref_ban_list_array));
 	$cleaned_ref_ban_list_array = clean_banlists ($unique_ref_ban_list_array);
 	
@@ -1450,11 +1428,11 @@ function get_ref_ban_list()
  */
 function check_moderation_blacklist($cmnt_message,$cmnt_ip,$cmnt_name,$field)
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
 	// help from wordpress codes
-	$query = mysql_query("SELECT `".$field."` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1");
-	$bad_keys = mysql_fetch_array($query,MYSQL_ASSOC);
+	$query = mysqli_query($con,"SELECT `".$field."` FROM `{$pixelpost_db_prefix}banlist` LIMIT 1");
+	$bad_keys = mysqli_fetch_array($query,MYSQLI_ASSOC);
 
 	$words = explode("\n", $bad_keys[$field]);
 
@@ -1569,7 +1547,7 @@ function create_htaccess_banlist()
  */
 function moderate_past_with_list()
 {
-	global $pixelpost_db_prefix, $admin_lang_spam_err_6, $admin_lang_spam_com_upd;
+	global $pixelpost_db_prefix, $admin_lang_spam_err_6, $admin_lang_spam_com_upd, $ref_banlist, $con;
 	
 	$additional_msg = '';
 	
@@ -1600,11 +1578,11 @@ function moderate_past_with_list()
 		$where .= ' 0 ';
 
 		$query = "UPDATE `{$pixelpost_db_prefix}comments` SET `publish` = 'no' WHERE $where ";
-		mysql_query($query);
+		mysqli_query($con,$query);
 
-		if(mysql_error())
+		if(mysqli_error($con))
 		{
-			$additional_msg = $admin_lang_spam_err_6.'&nbsp;'.mysql_error().'<br />';
+			$additional_msg = $admin_lang_spam_err_6.'&nbsp;'.mysqli_error($con).'<br />';
 		}
 		else
 		{
@@ -1623,7 +1601,7 @@ function moderate_past_with_list()
  */
 function delete_past_with_list()
 {
-	global $pixelpost_db_prefix, $admin_lang_spam_com_del, $admin_lang_spam_err_7;
+	global $pixelpost_db_prefix, $admin_lang_spam_com_del, $admin_lang_spam_err_7, $ref_banlist, $con;
 	
 	$additional_msg = '';
 	
@@ -1654,10 +1632,10 @@ function delete_past_with_list()
 
 		$query = "DELETE FROM `{$pixelpost_db_prefix}comments` WHERE $where ";
 
-		mysql_query($query);
-		if(mysql_error())
+		mysqli_query($con,$query);
+		if(mysqli_error($con))
 		{
-			$additional_msg = $admin_lang_spam_err_7.'&nbsp;'.mysql_error().'<br />';
+			$additional_msg = $admin_lang_spam_err_7.'&nbsp;'.mysqli_error($con).'<br />';
 		}
 		else
 		{
@@ -1676,7 +1654,7 @@ function delete_past_with_list()
  */
 function delete_from_badreferer_list()
 {
-	global $pixelpost_db_prefix, $admin_lang_spam_err_8, $admin_lang_spam_visit_del;
+	global $pixelpost_db_prefix, $admin_lang_spam_err_8, $admin_lang_spam_visit_del, $ref_banlist, $con;
 	
 	$additional_msg = '';
 	
@@ -1706,10 +1684,10 @@ function delete_from_badreferer_list()
 		$where .= ' 0 ';
 
 		$query = "DELETE FROM `{$pixelpost_db_prefix}visitors` WHERE $where ";
-		mysql_query($query);
-		if(mysql_error())
+		mysqli_query($con,$query);
+		if(mysqli_error($con))
 		{
-			$additional_msg = $admin_lang_spam_err_8.'&nbsp;'.mysql_error().'<br />';
+			$additional_msg = $admin_lang_spam_err_8.'&nbsp;'.mysqli_error($con).'<br />';
 		}
 		else
 		{
@@ -1736,7 +1714,7 @@ function clean_comment($string)
 
 function save_tags_new($tags_str,$theid,$alt = '')
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
 	if(strlen($tags_str) > 0)
 	{
@@ -1761,19 +1739,19 @@ function save_tags_new($tags_str,$theid,$alt = '')
 			$query_val[] = "( " . $theid . ",'" . $val . "')";
 		}
 
-		$sql_tag = mysql_query("INSERT INTO `".$pixelpost_db_prefix."tags` (img_id, ".$alt."tag) VALUES ".implode(",", $query_val)."");
+		$sql_tag = mysqli_query($con,"INSERT INTO `".$pixelpost_db_prefix."tags` (img_id, ".$alt."tag) VALUES ".implode(",", $query_val)."");
 	}
 }
 
 function list_tags_edit($id,$alt = '')
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 	
 	$tags = '';
 
-	$query = mysql_query("SELECT `".$alt."tag` FROM `".$pixelpost_db_prefix."tags` WHERE `img_id` = ".$id." AND `".$alt."tag` NOT LIKE '' ORDER BY `".$alt."tag` ASC");
+	$query = mysqli_query($con,"SELECT `".$alt."tag` FROM `".$pixelpost_db_prefix."tags` WHERE `img_id` = ".$id." AND `".$alt."tag` NOT LIKE '' ORDER BY `".$alt."tag` ASC");
 
-	while(list($tag) = mysql_fetch_row($query))
+	while(list($tag) = mysqli_fetch_row($query))
 	{
 		$tags .= ' '.$tag;
 	}
@@ -1783,14 +1761,14 @@ function list_tags_edit($id,$alt = '')
 
 function del_tags_edit($id,$alt = '')
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 
-	mysql_query("DELETE FROM `".$pixelpost_db_prefix."tags` WHERE `img_id` = ".$id." AND `".$alt."tag` NOT LIKE ''");
+	mysqli_query($con,"DELETE FROM `".$pixelpost_db_prefix."tags` WHERE `img_id` = ".$id." AND `".$alt."tag` NOT LIKE ''");
 }
 
 function save_tags_edit($tags_str,$id,$alt = '')
 {
-	global $pixelpost_db_prefix;
+	global $pixelpost_db_prefix, $con;
 	
 	del_tags_edit($id, $alt);
 	save_tags_new($tags_str, $id, $alt);
